@@ -1,54 +1,100 @@
-version: '3.7'
+version: '3'
+
+networks:
+  default:
+    external:
+      name: webproxy
 
 services:
-
-  web:
+  nginx:
     image: nginx 
-    ports:
-      - "80:80"
+    hostname: nginx
+    environment:
+      - VIRTUAL_HOST=site.localhost,www.site.localhost
+    expose:
+      - "80"
     volumes:
-      - ./${PROJECT_DIRECTORY}:/${PROJECT_DIRECTORY}
+      - ./${PROJECT_DIRECTORY}:/project
       - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - mariadb
+      - fpm
+    restart: always
 
-  app:
+  fpm:
     build:
       context: .
-      dockerfile: php.Dockerfile
-    volumes:
-      - ./${PROJECT_DIRECTORY}:/${PROJECT_DIRECTORY}
-    working_dir: /${PROJECT_DIRECTORY}
+      dockerfile: fpm.Dockerfile
+    hostname: fpm
     user: ${CURRENT_UID}
-
-  db:
-    image: mariadb
     volumes:
-      - ./${DB_DIRECTORY}:/var/lib/mysql
+      - ./${PROJECT_DIRECTORY}:/project
+    working_dir: /project
+    depends_on:
+      - mariadb
+    restart: always
+
+  mariadb:
+    image: mariadb
+    hostname: mariadb
+    user: ${CURRENT_UID}
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
       MYSQL_USER: ${DB_USERNAME}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./${DB_DIRECTORY}:/var/lib/mysql
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    user: ${CURRENT_UID}
+    restart: always
 
   composer:
     image: composer
-    volumes:
-      - ./${PROJECT_DIRECTORY}:/${PROJECT_DIRECTORY}
-    working_dir: /${PROJECT_DIRECTORY}
-    command: composer install
+    hostname: composer
     user: ${CURRENT_UID}
+    volumes:
+      - ./${PROJECT_DIRECTORY}:/project
+    working_dir: /project
 
   node:
-    image: node:8
-    volumes:
-      - ./${PROJECT_DIRECTORY}:/${PROJECT_DIRECTORY}
-    working_dir: /${PROJECT_DIRECTORY}
-    command: bash -c 'yarn && yarn run dev'
+    image: node
+    hostname: node
     user: ${CURRENT_UID}
+    environment:
+      - VIRTUAL_HOST=bs.localhost
+    expose:
+      - "3000"
+    volumes:
+      - ./${PROJECT_DIRECTORY}:/project
+    working_dir: /project
+
+  socat:
+    hostname: socat
+    image: alpine/socat
+    command: TCP-LISTEN:3001,fork TCP:node:3001
+    environment:
+      - VIRTUAL_HOST=ui.bs.localhost
+    expose:
+      - "3001"
 
   adminer:
     image: adminer
-    ports:
-      - 8080:8080
-    user: ${CURRENT_UID}
+    hostname: adminer
+    environment:
+      - VIRTUAL_HOST=adminer.localhost
+      - ADMINER_DEFAULT_SERVER=mariadb
+    expose:
+      - "8080"
+    depends_on:
+      - mariadb
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin 
+    hostname: phpmyadmin
+    environment:
+      - VIRTUAL_HOST=phpmyadmin.localhost
+      - PMA_HOST=mariadb
+    expose:
+      - "80"
+    depends_on:
+      - mariadb
