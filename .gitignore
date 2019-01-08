@@ -4,6 +4,7 @@
 !project/.gitkeep
 !nginx/conf.d/default.conf
 !docker-compose.yml
+!docker-compose.production.yml
 !fpm.Dockerfile
 !init.sh
 !start.sh

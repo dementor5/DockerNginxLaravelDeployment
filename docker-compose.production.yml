@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  nginx:
+    environment:
+      - VIRTUAL_HOST=${PRODUCTION_VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${PRODUCTION_VIRTUAL_HOST}
