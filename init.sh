@@ -31,9 +31,9 @@ if [ ! -d $ROOT_PATH/$DB_DIRECTORY ]; then
   mkdir $ROOT_PATH/$DB_DIRECTORY
 fi
 
+docker-compose $CONFIG up -d mariadb
 docker-compose $CONFIG run --rm composer bash -c 'composer install && php artisan key:generate'
 docker-compose $CONFIG run --rm node bash -c 'yarn && yarn prod'
-docker-compose $CONFIG up -d mariadb
 docker-compose $CONFIG up -d fpm
 docker-compose $CONFIG up -d nginx
 docker-compose $CONFIG exec fpm php artisan migrate:refresh --seed
